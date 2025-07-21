@@ -1,69 +1,72 @@
-#ifndef CONFIG_H
-#define CONFIG_H
+#pragma once
 
-#include <stdint.h>
-#include <stdbool.h>
-#include "esp_err.h"
-
-/* ------------------------ 项目配置 ------------------------ */
-/* 默认配置 */
-#define DEFAULT_WIFI_SSID           "Xiaomi_7E5B"
-#define DEFAULT_WIFI_PASS           "richbeam"
-#define DEFAULT_REMOTE_SERVER_IP    "192.168.114.117"
-#define DEFAULT_REMOTE_SERVER_PORT  3334
-#define DEFAULT_UART_BAUD_RATE      921600
-
-/* SoftAP 配置 */
-#define SOFTAP_WIFI_SSID            "esp32"
-#define SOFTAP_WIFI_PASS            "12345678"
-#define SOFTAP_MAX_STA_CONN         4
-
+/* Wi‑Fi STA 信息 */
+#define WIFI_SSID           "ubuntu"
+#define WIFI_PASS           "228228228"
 #define WIFI_MAX_RETRY      5
+
+/* WiFi管理配置 */
+#define ENABLE_SOFTAP       1                    // 1=开启SoftAP, 0=关闭
+#define SOFTAP_SSID_PREFIX  "ESP_"               // SoftAP SSID前缀
+#define SOFTAP_PASSWORD     "12345678"          // SoftAP密码
+#define SOFTAP_MAX_CONN     4                   // 最大连接数
+#define HTTP_SERVER_PORT    80                  // HTTP服务器端口
+
+/* HTTP服务器缓冲区配置 */
+#define HTTP_MAX_URI_LEN    1024                // HTTP URI最大长度
+#define HTTP_MAX_HEADER_LEN 2048                // HTTP请求头最大长度
+#define HTTP_RECV_BUF_SIZE  2048                // HTTP接收缓冲区大小
 
 /* UART 参数 */
 #define UART_PORT_NUM       UART_NUM_1
+#define UART_BAUD_RATE      921600
 #define UART_TX_PIN         3
 #define UART_RX_PIN         4
 #define UART_BUF_SIZE       2048
 
-/* TCP重连间隔 */
-#define TCP_RECONNECT_MS    5000
+/* ■ Client 模式专用宏 */
+#define REMOTE_SERVER_IP    "10.42.0.1"   // ★ 改成你的服务器 IP
+#define REMOTE_SERVER_PORT  6002               // ★ 改成你的服务器端口
+#define TCP_RECONNECT_MS    5000                // ★ 断线后重新连接间隔
 
-/* 公共缓冲区 - 优化缓冲区大小以减少丢包 */
-#define TCP_RECV_BUF_SIZE   4096
-#define TCP_SEND_BUF_SIZE   4096
+/* 公共缓冲区 */
+#define TCP_RECV_BUF_SIZE   2048
 
-/* LiDAR数据包检测 */
-#define LIDAR_PACKET_SIZE   352
+/* LiDAR数据包格式 */
+#define LIDAR_PACKET_SIZE   44
+#define LIDAR_FRAME_PACKETS 8
+#define LIDAR_FRAME_SIZE    (LIDAR_PACKET_SIZE * LIDAR_FRAME_PACKETS)  // 352 bytes
 #define LIDAR_HEADER_0      0x0A
 #define LIDAR_HEADER_1      0x00
-#define LIDAR_BATCH_SIZE    8     /* 缓存8个序号0-7的包后批量发送 */
+#define FRAME_BUFFER_COUNT  2   // 缓冲多少帧再发送
 
-/* NVS存储命名空间 */
-#define STORAGE_NAMESPACE   "config"
+/* 日志控制宏 */
+#define ENABLE_DEBUG_LOG    0   // 1=开启详细调试日志, 0=关闭
+#define ENABLE_INFO_LOG     0   // 1=开启信息日志, 0=关闭  
+#define ENABLE_WARN_LOG     1   // 1=开启警告日志, 0=关闭
+#define ENABLE_ERROR_LOG    1   // 1=开启错误日志, 0=关闭
 
-/* 配置项键名 */
-#define KEY_WIFI_SSID      "wifi_ssid"
-#define KEY_WIFI_PASS      "wifi_pass"
-#define KEY_SERVER_IP      "server_ip"
-#define KEY_SERVER_PORT    "server_port"
-#define KEY_UART_BAUD      "uart_baud"
-#define KEY_SOFTAP_ENABLED "softap_enabled"
+/* 可控日志宏定义 */
+#if ENABLE_DEBUG_LOG
+    #define LOG_D(tag, format, ...) ESP_LOGD(tag, format, ##__VA_ARGS__)
+#else
+    #define LOG_D(tag, format, ...) do { } while(0)
+#endif
 
-/* 配置结构体 */
-typedef struct {
-    char wifi_ssid[32];
-    char wifi_pass[64];
-    char server_ip[16];
-    uint16_t server_port;
-    uint32_t uart_baudrate;
-    bool softap_enabled;
-} config_t;
+#if ENABLE_INFO_LOG
+    #define LOG_I(tag, format, ...) ESP_LOGI(tag, format, ##__VA_ARGS__)
+#else
+    #define LOG_I(tag, format, ...) do { } while(0)
+#endif
 
-/* 配置管理函数 */
-void config_init(void);
-config_t* config_get(void);
-esp_err_t config_save(void);
-void config_load_defaults(void);
+#if ENABLE_WARN_LOG
+    #define LOG_W(tag, format, ...) ESP_LOGW(tag, format, ##__VA_ARGS__)
+#else
+    #define LOG_W(tag, format, ...) do { } while(0)
+#endif
 
-#endif // CONFIG_H
+#if ENABLE_ERROR_LOG
+    #define LOG_E(tag, format, ...) ESP_LOGE(tag, format, ##__VA_ARGS__)
+#else
+    #define LOG_E(tag, format, ...) do { } while(0)
+#endif

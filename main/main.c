@@ -1,4 +1,4 @@
-// main/tcp_uart_wifi_bridge.c
+// main/main.c
 #include <stdio.h>
 #include <string.h>
 #include <sys/param.h>
@@ -20,35 +20,8 @@
 #include "freertos/semphr.h"
 #include "freertos/event_groups.h"
 
-/* ------------------------ 项目配置 ------------------------ */
-/* Wi‑Fi STA 信息（也可移入 Kconfig）*/
-#define WIFI_SSID           "Xiaomi_7E5B"
-#define WIFI_PASS           "richbeam"
-#define WIFI_MAX_RETRY      5
-
-/* UART 参数 */
-#define UART_PORT_NUM       UART_NUM_1
-#define UART_BAUD_RATE      921600
-#define UART_TX_PIN         17
-#define UART_RX_PIN         18
-#define UART_BUF_SIZE       2048
-
-/* ========= TCP 角色选择 ========= */
-#define TCP_BRIDGE_CLIENT   1       // ★ 0 = 当 Server；1 = 当 Client
-/* -------------------------------- */
-
-/* ■ Server 模式专用宏 */
-#define TCP_SERVER_PORT     3333
-#define MAX_TCP_CLIENTS     1
-
-/* ■ Client 模式专用宏 */
-#define REMOTE_SERVER_IP    "192.168.114.117"   // ★ 改成你的服务器 IP
-#define REMOTE_SERVER_PORT  3334            // ★ 改成你的服务器端口
-#define TCP_RECONNECT_MS    5000            // ★ 断线后重新连接间隔
-
-/* 公共缓冲区 */
-#define TCP_RECV_BUF_SIZE   2048
-/* ---------------------------------------------------------- */
+#include "config.h"
+#include "dataproc.h"
 
 static const char *TAG = "TCP_UART_WIFI";
 
@@ -57,9 +30,9 @@ static EventGroupHandle_t s_wifi_event_group;
 #define WIFI_FAIL_BIT      BIT1
 static int s_retry_num   = 0;
 
-/* ===== Socket 全局句柄保护 ===== */
-static int g_sock = -1;
-static SemaphoreHandle_t g_sock_mutex;
+/* Socket 全局句柄保护 */
+int g_sock = -1;
+SemaphoreHandle_t g_sock_mutex;
 
 /* ----------------- Wi‑Fi 事件回调 ----------------- */
 static void wifi_event_handler(void* arg, esp_event_base_t event_base,
@@ -124,29 +97,6 @@ static void wifi_init_sta(void)
     }
 }
 
-/* ----------------- UART → Socket 任务 ----------------- */
-static void uart_to_sock_task(void *arg)
-{
-    uint8_t *buf = malloc(UART_BUF_SIZE);
-    for (;;) {
-        int len = uart_read_bytes(UART_PORT_NUM, buf, UART_BUF_SIZE, pdMS_TO_TICKS(100));
-        if (len > 0) {
-            xSemaphoreTake(g_sock_mutex, portMAX_DELAY);
-            int sock = g_sock;
-            xSemaphoreGive(g_sock_mutex);
-
-            if (sock >= 0) {
-                int off = 0;
-                while (off < len) {
-                    int sent = send(sock, buf + off, len - off, 0);
-                    if (sent <= 0) break;
-                    off += sent;
-                }
-            }
-        }
-    }
-}
-
 /* ----------------- Socket → UART 任务 ----------------- */
 static void sock_to_uart_task(void *arg)
 {
@@ -172,48 +122,7 @@ static void sock_to_uart_task(void *arg)
     vTaskDelete(NULL);
 }
 
-/* ======================= Server 模式 ======================= */
-#if !TCP_BRIDGE_CLIENT
-static void tcp_server_task(void *arg)
-{
-    struct sockaddr_in6 listen_addr = {
-        .sin6_family = AF_INET6,
-        .sin6_port   = htons(TCP_SERVER_PORT),
-        .sin6_addr   = in6addr_any
-    };
-
-    int listen_sock = socket(AF_INET6, SOCK_STREAM, IPPROTO_IP);
-    if (listen_sock < 0) { ESP_LOGE(TAG, "socket err"); vTaskDelete(NULL); }
-
-    setsockopt(listen_sock, SOL_SOCKET, SO_REUSEADDR, &(int){1}, sizeof(int));
-    ESP_ERROR_CHECK(bind(listen_sock, (struct sockaddr *)&listen_addr, sizeof(listen_addr)));
-    listen(listen_sock, MAX_TCP_CLIENTS);
-    ESP_LOGI(TAG, "Listening on port %d", TCP_SERVER_PORT);
-
-    while (1) {
-        struct sockaddr_in6 addr; socklen_t len = sizeof(addr);
-        int sock = accept(listen_sock, (struct sockaddr *)&addr, &len);
-        if (sock < 0) continue;
-
-        xSemaphoreTake(g_sock_mutex, portMAX_DELAY);
-        if (g_sock >= 0) {             // 已有连接
-            ESP_LOGW(TAG, "Busy; reject new client");
-            close(sock);
-            xSemaphoreGive(g_sock_mutex);
-            continue;
-        }
-        g_sock = sock;
-        xSemaphoreGive(g_sock_mutex);
-
-        ESP_LOGI(TAG, "Client connected");
-        xTaskCreatePinnedToCore(sock_to_uart_task, "sock2uart", 4096,
-                                (void *)(intptr_t)sock, 12, NULL, tskNO_AFFINITY);
-    }
-}
-#endif
-
 /* ======================= Client 模式 ======================= */
-#if TCP_BRIDGE_CLIENT
 static void tcp_client_task(void *arg)
 {
     for (;;) {
@@ -259,14 +168,15 @@ static void tcp_client_task(void *arg)
         g_sock = sock;
         xSemaphoreGive(g_sock_mutex);
 
-        ESP_LOGI(TAG, "TCP client connected 🎉");
+        ESP_LOGI(TAG, "🎉 TCP客户端连接成功! Socket=%d", sock);
+        ESP_LOGI(TAG, "🔗 开始双向数据转发...");
         sock_to_uart_task((void *)(intptr_t)sock);   // 阻塞，直到断线
+        ESP_LOGW(TAG, "🔌 TCP连接断开，准备重连...");
 
     retry:
         vTaskDelay(pdMS_TO_TICKS(TCP_RECONNECT_MS));
     }
 }
-#endif
 
 /* ----------------- 应用入口 ----------------- */
 void app_main(void)
@@ -295,20 +205,16 @@ void app_main(void)
     ESP_ERROR_CHECK(uart_set_pin(UART_PORT_NUM, UART_TX_PIN, UART_RX_PIN,
                                  UART_PIN_NO_CHANGE, UART_PIN_NO_CHANGE));
 
-    /* 4. 互斥 & 任务 */
+    /* 4. 数据处理初始化 */
+    init_data_processing();
     g_sock_mutex = xSemaphoreCreateMutex();
+
+    /* 5. 创建任务 */
     xTaskCreatePinnedToCore(uart_to_sock_task, "uart2sock", 4096,
                             NULL, 12, NULL, tskNO_AFFINITY);
-
-#if TCP_BRIDGE_CLIENT
     xTaskCreatePinnedToCore(tcp_client_task, "tcp_client", 4096,
                             NULL, 11, NULL, tskNO_AFFINITY);
-    ESP_LOGI(TAG, "UART↔TCP *Client* bridge; target %s:%d",
+
+    ESP_LOGI(TAG, "UART↔TCP Client bridge; target %s:%d",
              REMOTE_SERVER_IP, REMOTE_SERVER_PORT);
-#else
-    xTaskCreatePinnedToCore(tcp_server_task, "tcp_server", 4096,
-                            NULL, 11, NULL, tskNO_AFFINITY);
-    ESP_LOGI(TAG, "UART↔TCP *Server* bridge; listening on %d",
-             TCP_SERVER_PORT);
-#endif
 }

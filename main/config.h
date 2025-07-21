@@ -1,9 +1,21 @@
 #pragma once
 
 /* Wi‑Fi STA 信息 */
-#define WIFI_SSID           "Xiaomi_7E5B"
-#define WIFI_PASS           "richbeam"
+#define WIFI_SSID           "ubuntu"
+#define WIFI_PASS           "228228228"
 #define WIFI_MAX_RETRY      5
+
+/* WiFi管理配置 */
+#define ENABLE_SOFTAP       1                    // 1=开启SoftAP, 0=关闭
+#define SOFTAP_SSID_PREFIX  "ESP"               // SoftAP SSID前缀
+#define SOFTAP_PASSWORD     "12345678"          // SoftAP密码
+#define SOFTAP_MAX_CONN     4                   // 最大连接数
+#define HTTP_SERVER_PORT    80                  // HTTP服务器端口
+
+/* HTTP服务器缓冲区配置 */
+#define HTTP_MAX_URI_LEN    1024                // HTTP URI最大长度
+#define HTTP_MAX_HEADER_LEN 2048                // HTTP请求头最大长度
+#define HTTP_RECV_BUF_SIZE  2048                // HTTP接收缓冲区大小
 
 /* UART 参数 */
 #define UART_PORT_NUM       UART_NUM_1
@@ -13,8 +25,8 @@
 #define UART_BUF_SIZE       2048
 
 /* ■ Client 模式专用宏 */
-#define REMOTE_SERVER_IP    "192.168.114.117"   // ★ 改成你的服务器 IP
-#define REMOTE_SERVER_PORT  3334                // ★ 改成你的服务器端口
+#define REMOTE_SERVER_IP    "10.42.0.1"   // ★ 改成你的服务器 IP
+#define REMOTE_SERVER_PORT  6002               // ★ 改成你的服务器端口
 #define TCP_RECONNECT_MS    5000                // ★ 断线后重新连接间隔
 
 /* 公共缓冲区 */
@@ -27,3 +39,34 @@
 #define LIDAR_HEADER_0      0x0A
 #define LIDAR_HEADER_1      0x00
 #define FRAME_BUFFER_COUNT  2   // 缓冲多少帧再发送
+
+/* 日志控制宏 */
+#define ENABLE_DEBUG_LOG    0   // 1=开启详细调试日志, 0=关闭
+#define ENABLE_INFO_LOG     0   // 1=开启信息日志, 0=关闭  
+#define ENABLE_WARN_LOG     1   // 1=开启警告日志, 0=关闭
+#define ENABLE_ERROR_LOG    1   // 1=开启错误日志, 0=关闭
+
+/* 可控日志宏定义 */
+#if ENABLE_DEBUG_LOG
+    #define LOG_D(tag, format, ...) ESP_LOGD(tag, format, ##__VA_ARGS__)
+#else
+    #define LOG_D(tag, format, ...) do { } while(0)
+#endif
+
+#if ENABLE_INFO_LOG
+    #define LOG_I(tag, format, ...) ESP_LOGI(tag, format, ##__VA_ARGS__)
+#else
+    #define LOG_I(tag, format, ...) do { } while(0)
+#endif
+
+#if ENABLE_WARN_LOG
+    #define LOG_W(tag, format, ...) ESP_LOGW(tag, format, ##__VA_ARGS__)
+#else
+    #define LOG_W(tag, format, ...) do { } while(0)
+#endif
+
+#if ENABLE_ERROR_LOG
+    #define LOG_E(tag, format, ...) ESP_LOGE(tag, format, ##__VA_ARGS__)
+#else
+    #define LOG_E(tag, format, ...) do { } while(0)
+#endif

@@ -8,6 +8,8 @@ This is an **ESP32-S3 firmware project** that implements a high-speed **UART-to-
 
 ## Build and Development Commands
 
+**Requirements**: ESP-IDF v5.4.1 or later
+
 ### Basic ESP-IDF Commands
 ```bash
 # Configure the project (run once or when changing configs)
@@ -112,7 +114,7 @@ The application uses FreeRTOS tasks with mutex-protected socket access:
 ## Common Development Tasks
 
 ### Changing Network Configuration
-Edit `main.c` and modify:
+Edit `config.h` and modify:
 ```c
 #define WIFI_SSID "YourNetworkName"
 #define WIFI_PASS "YourPassword"
@@ -126,8 +128,8 @@ Edit `main.c` and modify:
 
 ### Modifying UART Settings
 ```c
-#define UART_BAUD_RATE 921600  // Current baud rate
-#define UART_NUM UART_NUM_0    // UART port
+#define UART_BAUD_RATE 921600    // Current baud rate
+#define UART_PORT_NUM UART_NUM_1 // UART port (in config.h)
 ```
 
 ## Testing and Validation

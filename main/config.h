@@ -6,6 +6,9 @@
 #define WIFI_SSID           "miwifi"
 #define WIFI_PASS           "(12345678)"
 #define WIFI_MAX_RETRY      9999
+#define WIFI_TX_POWER       44
+//   * @attention 3. Mapping Table {Power, max_tx_power} = {{8,   2}, {20,  5}, {28,  7}, {34,  8}, {44, 11},
+//   *                                                      {52, 13}, {56, 14}, {60, 15}, {66, 16}, {72, 18}, {80, 20}}.
 
 /* WiFi管理配置 */
 #define ENABLE_SOFTAP       1                    // 1=开启SoftAP, 0=关闭

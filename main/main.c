@@ -113,8 +113,8 @@ static void wifi_init_sta(void)
     if (ENABLE_SOFTAP) {
         start_softap_mode();
     }
-    
     ESP_ERROR_CHECK(esp_wifi_start());
+    ESP_ERROR_CHECK(esp_wifi_set_max_tx_power(WIFI_TX_POWER));
 
     EventBits_t bits = xEventGroupWaitBits(
             s_wifi_event_group,
@@ -207,7 +207,7 @@ static void tcp_client_task(void *arg)
                 LOG_E(TAG, "inet_pton v4 fail");
                 close(sock); goto retry;
             }
-            LOG_I(TAG, "Connecting to %s:%d ...", server_ip, server_port);
+            LOG_W(TAG, "Connecting to %s:%d ...", server_ip, server_port);
             if (connect(sock, (struct sockaddr *)&addr4, sizeof(addr4)) != 0) {
                 LOG_W(TAG, "connect v4 err (%d)", errno);
                 close(sock); goto retry;

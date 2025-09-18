@@ -46,14 +46,14 @@ bool validate_frame(const lidar_frame_t* frame) {
     return true;
 }
 
-void send_buffered_frames(void) {
+bool send_buffered_frames(void) {
     xSemaphoreTake(g_sock_mutex, portMAX_DELAY);
     int sock = g_sock;
     xSemaphoreGive(g_sock_mutex);
     
     if (sock < 0) {
         LOG_W(TAG, "⚠️  TCP连接未建立，跳过发送");
-        return;
+        return false;
     }
     
     LOG_I(TAG, "📤 开始发送缓冲帧数据 - Socket=%d", sock);
@@ -97,6 +97,8 @@ void send_buffered_frames(void) {
     
     LOG_I(TAG, "🎯 发送完成: %d/%d帧成功 (累计: %u帧)", 
            successfully_sent, frames_to_send, (unsigned int)g_total_frames_sent);
+
+    return true;
 }
 
 void init_data_processing(void) {
@@ -124,7 +126,12 @@ void uart_to_sock_task(void *arg)
     static uint32_t discarded_bytes = 0;
     
     LOG_I(TAG, "🚀 UART数据处理任务启动 - 开始监听UART数据...");
-    
+    // 阻塞等待socket连接
+    wait_connect:
+        LOG_W(TAG, "TCP连接等待中...");
+        while (g_sock < 0) vTaskDelay(pdMS_TO_TICKS(100));
+        LOG_W(TAG, "✅ TCP连接已建立 - 开始处理UART数据");
+
     for (;;) {
         int len = uart_read_bytes(UART_PORT_NUM, uart_buf, UART_BUF_SIZE, pdMS_TO_TICKS(100));
         if (len > 0) {
@@ -225,7 +232,11 @@ void uart_to_sock_task(void *arg)
                                             if (g_buffered_frames >= FRAME_BUFFER_COUNT) {
                                                 LOG_I(TAG, "🚀 缓冲区满，开始发送 %d 帧数据", g_buffered_frames);
                                                 xSemaphoreGive(g_frame_mutex);
-                                                send_buffered_frames();
+                                                bool ret = send_buffered_frames();
+                                                if (!ret) {
+                                                    LOG_W(TAG, "⚠️  发送失败，等待TCP连接...");
+                                                    goto wait_connect;
+                                                }
                                             } else {
                                                 xSemaphoreGive(g_frame_mutex);
                                             }

@@ -1,9 +1,11 @@
 #pragma once
 
+// #define CLEAN_NVS
+
 /* Wi‑Fi STA 信息 */
-#define WIFI_SSID           "ubuntu"
-#define WIFI_PASS           "228228228"
-#define WIFI_MAX_RETRY      5
+#define WIFI_SSID           "miwifi"
+#define WIFI_PASS           "(12345678)"
+#define WIFI_MAX_RETRY      9999
 
 /* WiFi管理配置 */
 #define ENABLE_SOFTAP       1                    // 1=开启SoftAP, 0=关闭
@@ -20,14 +22,14 @@
 /* UART 参数 */
 #define UART_PORT_NUM       UART_NUM_1
 #define UART_BAUD_RATE      921600
-#define UART_TX_PIN         3
-#define UART_RX_PIN         4
+#define UART_TX_PIN         1
+#define UART_RX_PIN         2
 #define UART_BUF_SIZE       2048
 
 /* ■ Client 模式专用宏 */
-#define REMOTE_SERVER_IP    "10.42.0.1"   // ★ 改成你的服务器 IP
-#define REMOTE_SERVER_PORT  6002               // ★ 改成你的服务器端口
-#define TCP_RECONNECT_MS    5000                // ★ 断线后重新连接间隔
+#define REMOTE_SERVER_IP    "180.184.52.3"   // ★ 改成你的服务器 IP
+#define REMOTE_SERVER_PORT  6001               // ★ 改成你的服务器端口
+#define TCP_RECONNECT_MS    500                // ★ 断线后重新连接间隔
 
 /* 公共缓冲区 */
 #define TCP_RECV_BUF_SIZE   2048
@@ -40,6 +42,11 @@
 #define LIDAR_HEADER_1      0x00
 #define FRAME_BUFFER_COUNT  2   // 缓冲多少帧再发送
 
+
+/* LED状态控制 */
+#define LED_PERIOD_NORMAL   1000    // 正常工作时LED闪烁周期 (ms)
+#define LED_PERIOD_ERROR    200     // 出错时LED闪烁周期 (ms)
+
 /* 日志控制宏 */
 #define ENABLE_DEBUG_LOG    0   // 1=开启详细调试日志, 0=关闭
 #define ENABLE_INFO_LOG     0   // 1=开启信息日志, 0=关闭  
@@ -48,7 +55,7 @@
 
 /* 可控日志宏定义 */
 #if ENABLE_DEBUG_LOG
-    #define LOG_D(tag, format, ...) ESP_LOGD(tag, format, ##__VA_ARGS__)
+    #define LOG_D(tag, format, ...) ESP_LOGI(tag, format, ##__VA_ARGS__)
 #else
     #define LOG_D(tag, format, ...) do { } while(0)
 #endif

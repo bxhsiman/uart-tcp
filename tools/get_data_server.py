@@ -258,7 +258,7 @@ def serve_once(listen_host: str, port: int, outfile: Path):
 def main():
     p = argparse.ArgumentParser(description="Enhanced TCP server for LiDAR data validation")
     p.add_argument("--host", default="0.0.0.0", help="Listen address (default 0.0.0.0)")
-    p.add_argument("--port", default=3334, type=int, help="Listen port (default 3334)")
+    p.add_argument("--port", default=6002, type=int, help="Listen port (default 3334)")
     p.add_argument("--outfile", default="dump_enhanced.hex", help="Destination file path")
     args = p.parse_args()
 

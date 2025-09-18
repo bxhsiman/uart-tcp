@@ -1,4 +1,5 @@
 // main/main.c
+#include <stdint.h>
 #include <stdio.h>
 #include <string.h>
 #include <sys/param.h>
@@ -14,6 +15,7 @@
 #include "esp_netif.h"
 #include "nvs_flash.h"
 
+#include "driver/gpio.h"
 #include "driver/uart.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
@@ -126,8 +128,8 @@ static void wifi_init_sta(void)
     }
 }
 
-/* ----------------- Socket → UART 任务 ----------------- */
-static void sock_to_uart_task(void *arg)
+/* ----------------- Socket → UART 任务 连接保活 ----------------- */
+static void sock_keep_alive(void *arg)
 {
     int sock = (intptr_t)arg;
     uint8_t *buf = malloc(TCP_RECV_BUF_SIZE);
@@ -140,15 +142,21 @@ static void sock_to_uart_task(void *arg)
             break;      // 0 or error → disconnect
         }
     }
-    LOG_I(TAG, "Socket closed");
+    LOG_W(TAG, "Socket closed");
 
+    shutdown(sock, SHUT_RDWR);
+    printf("0");
     close(sock);
+    printf("1");
     xSemaphoreTake(g_sock_mutex, portMAX_DELAY);
+    printf("2");
     if (g_sock == sock) g_sock = -1;
+    printf("3");
     xSemaphoreGive(g_sock_mutex);
-
+    printf("4");
     free(buf);
-    vTaskDelete(NULL);
+    printf("5");
+    LOG_W(TAG, "Socket closed!!");
 }
 
 /* ======================= Client 模式 ======================= */
@@ -171,7 +179,11 @@ static void tcp_client_task(void *arg)
         /* 2. 创建相应族的 socket */
         int domain = is_ipv6 ? AF_INET6 : AF_INET;
         int sock   = socket(domain, SOCK_STREAM, IPPROTO_IP);
-        if (sock < 0) { LOG_E(TAG, "socket() fail (%d)", errno); goto retry; }
+
+        if (sock < 0) { 
+            LOG_E(TAG, "socket() fail (%d)", errno); 
+            goto retry; 
+        }
 
         /* 3. 填地址结构并 inet_pton */
         if (is_ipv6) {
@@ -210,7 +222,7 @@ static void tcp_client_task(void *arg)
         LOG_I(TAG, "🎉 TCP客户端连接成功! Socket=%d", sock);
         LOG_I(TAG, "🔗 开始双向数据转发...");
         g_wifi_stats.tcp_connected = true;
-        sock_to_uart_task((void *)(intptr_t)sock);   // 阻塞，直到断线
+        sock_keep_alive((void *)(intptr_t)sock);   // 阻塞，直到断线
         LOG_W(TAG, "🔌 TCP连接断开，准备重连...");
         g_wifi_stats.tcp_connected = false;
 
@@ -243,6 +255,20 @@ static void stats_update_task(void *arg)
     }
 }
 
+static void led_blink_task(void *arg)
+{
+    gpio_set_direction(GPIO_NUM_18, GPIO_MODE_OUTPUT);
+
+    for (;;) {
+        static uint16_t blink_time = 0;
+        blink_time = g_wifi_stats.tcp_connected ? LED_PERIOD_NORMAL : LED_PERIOD_ERROR;
+        gpio_set_level(GPIO_NUM_18, 1);
+        vTaskDelay(pdMS_TO_TICKS(blink_time));
+        gpio_set_level(GPIO_NUM_18, 0);
+        vTaskDelay(pdMS_TO_TICKS(blink_time));
+    }
+}
+
 /* ----------------- 应用入口 ----------------- */
 void app_main(void)
 {
@@ -253,6 +279,11 @@ void app_main(void)
         ESP_ERROR_CHECK(nvs_flash_init());
     }
     
+    #ifdef CLEAN_NVS
+    ESP_ERROR_CHECK(nvs_flash_erase());
+    ESP_ERROR_CHECK(nvs_flash_init());
+    #endif
+
     /* 1.1. 初始化设备配置 */
     LOG_I(TAG, "初始化设备配置...");
     esp_err_t config_ret = init_device_config();
@@ -301,7 +332,10 @@ void app_main(void)
                             NULL, 11, NULL, tskNO_AFFINITY);
     xTaskCreatePinnedToCore(stats_update_task, "stats", 2048,
                             NULL, 5, NULL, tskNO_AFFINITY);
-
+    xTaskCreatePinnedToCore(led_blink_task, "led_blink", 2048,
+                            NULL, 4, NULL, tskNO_AFFINITY);
+    // 看门狗超时直接复位
+    
     LOG_I(TAG, "UART↔TCP Client bridge; target %s:%d",
              g_device_config.server_ip, g_device_config.server_port);
 }

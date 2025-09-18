@@ -31,6 +31,6 @@ extern int g_sock;
 /* 函数声明 */
 bool validate_lidar_packet(const uint8_t* data, int len);
 bool validate_frame(const lidar_frame_t* frame);
-void send_buffered_frames(void);
+bool send_buffered_frames(void);
 void init_data_processing(void);
 void uart_to_sock_task(void *arg);

@@ -26,6 +26,8 @@
 #include "dataproc.h"
 #include "webserver.h"
 
+#include "cJSON.h"
+
 static const char *TAG = "TCP_UART_WIFI";
 
 static EventGroupHandle_t s_wifi_event_group;
@@ -134,29 +136,44 @@ static void sock_keep_alive(void *arg)
     int sock = (intptr_t)arg;
     uint8_t *buf = malloc(TCP_RECV_BUF_SIZE);
 
+    if (!buf) {
+        LOG_E(TAG, "❌ 内存分配失败");
+        return;
+    }
+
+    LOG_I(TAG, "📡 Socket接收任务启动, Socket=%d", sock);
+
     for (;;) {
         int len = recv(sock, buf, TCP_RECV_BUF_SIZE, 0);
         if (len > 0) {
             uart_write_bytes(UART_PORT_NUM, (const char *)buf, len);
+            LOG_D(TAG, "📤 TCP→UART: %d字节", len);
         } else {
-            break;      // 0 or error → disconnect
+            // len=0表示正常关闭, len<0表示错误
+            if (len == 0) {
+                LOG_W(TAG, "🔌 服务器主动关闭连接");
+            } else {
+                LOG_W(TAG, "❌ recv错误: errno=%d", errno);
+            }
+            break;
         }
     }
-    LOG_W(TAG, "Socket closed");
 
+    // 清理socket资源
+    LOG_W(TAG, "🧹 开始清理Socket资源...");
     shutdown(sock, SHUT_RDWR);
-    printf("0");
     close(sock);
-    printf("1");
+
+    // 清除全局socket句柄
     xSemaphoreTake(g_sock_mutex, portMAX_DELAY);
-    printf("2");
-    if (g_sock == sock) g_sock = -1;
-    printf("3");
+    if (g_sock == sock) {
+        g_sock = -1;
+        LOG_W(TAG, "✅ 已清理g_sock");
+    }
     xSemaphoreGive(g_sock_mutex);
-    printf("4");
+
     free(buf);
-    printf("5");
-    LOG_W(TAG, "Socket closed!!");
+    LOG_W(TAG, "🔌 Socket资源清理完成");
 }
 
 /* ======================= Client 模式 ======================= */

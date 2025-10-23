@@ -6,3 +6,4 @@ sdkconfig.old
 .devcontainer
 .vscode
 .clangd
+managed_components/*

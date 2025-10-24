@@ -6,6 +6,7 @@
 #include "freertos/FreeRTOS.h"
 #include "freertos/semphr.h"
 #include "freertos/queue.h"
+#include "driver/uart.h"
 
 /* 数据包和帧处理 */
 typedef struct {
@@ -23,6 +24,7 @@ typedef struct {
 
 /* 全局变量声明 */
 extern QueueHandle_t g_frame_queue;        // 帧队列（生产者-消费者）
+extern QueueHandle_t g_uart_event_queue;   // UART事件队列
 extern SemaphoreHandle_t g_sock_mutex;
 extern int g_sock;
 
@@ -31,5 +33,5 @@ bool validate_lidar_packet(const uint8_t* data, int len);
 bool validate_frame(const lidar_frame_t* frame);
 bool send_frame(const lidar_frame_t* frame);  // 发送单帧
 void init_data_processing(void);
-void uart_rx_task(void *arg);                 // 生产者：UART接收
+void uart_event_task(void *arg);              // UART事件处理任务（中断驱动）
 void tcp_send_task(void *arg);                // 消费者：TCP发送

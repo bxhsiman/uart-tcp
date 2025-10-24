@@ -2,6 +2,7 @@ import socket
 import json
 import base64
 import struct
+import time
 
 HOST = "0.0.0.0"   # 监听所有网卡
 PORT = 6001        # 端口号
@@ -45,6 +46,10 @@ def run_server():
         s.listen(1)
         print(f"[*] TCP server listening on {HOST}:{PORT}")
         last_num = 0
+        total_frames = 0       # 总帧数
+        dropped_frames = 0     # 丢帧数
+        last_stats_time = time.time()  # 上次统计时间
+
         while True:
             conn, addr = s.accept()
             print(f"[+] Connection from {addr}")
@@ -106,8 +111,9 @@ def run_server():
                             
                             if last_num != uint32_value - 1:
                             #     # print(f"{uint32_value, last_num}")
-                                print(f"发生不连 {uint32_value , last_num}")
-
+                                print(f"发生不连 {uint32_value - last_num}")
+                                print(f"距离上次时间：{time.time() - last_stats_time:.2f} 秒")
+                                last_stats_time = time.time()
                             last_num = uint32_value
                             # print(f"Payload (Hex):")
                             # print(hex_output)

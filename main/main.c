@@ -317,7 +317,7 @@ void app_main(void)
         init_webserver();
     }
 
-    /* 3. UART */
+    /* 3. UART（中断驱动模式） */
     const uart_config_t uc = {
         .baud_rate = UART_BAUD_RATE,
         .data_bits = UART_DATA_8_BITS,
@@ -326,7 +326,8 @@ void app_main(void)
         .flow_ctrl = UART_HW_FLOWCTRL_DISABLE,
         .source_clk = UART_SCLK_DEFAULT,
     };
-    ESP_ERROR_CHECK(uart_driver_install(UART_PORT_NUM, UART_BUF_SIZE*2, 0, 0, NULL, 0));
+    // 启用UART事件队列（20个事件，RX缓冲16KB，TX缓冲0）
+    ESP_ERROR_CHECK(uart_driver_install(UART_PORT_NUM, UART_BUF_SIZE*2, 0, 20, &g_uart_event_queue, 0));
     ESP_ERROR_CHECK(uart_param_config(UART_PORT_NUM, &uc));
     ESP_ERROR_CHECK(uart_set_pin(UART_PORT_NUM, UART_TX_PIN, UART_RX_PIN,
                                  UART_PIN_NO_CHANGE, UART_PIN_NO_CHANGE));
@@ -342,9 +343,9 @@ void app_main(void)
               g_device_config.wifi_ssid, g_device_config.server_ip, g_device_config.server_port);
     }
 
-    /* 5. 创建任务 */
-    xTaskCreatePinnedToCore(uart_rx_task, "uart_rx", 4096,
-                            NULL, 12, NULL, tskNO_AFFINITY);
+    /* 5. 创建任务（中断驱动架构） */
+    xTaskCreatePinnedToCore(uart_event_task, "uart_event", 4096,
+                            NULL, 12, NULL, tskNO_AFFINITY);  // 高优先级：UART事件处理
     xTaskCreatePinnedToCore(tcp_send_task, "tcp_send", 4096,
                             NULL, 11, NULL, tskNO_AFFINITY);
     xTaskCreatePinnedToCore(tcp_client_task, "tcp_client", 4096,

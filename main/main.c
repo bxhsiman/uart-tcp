@@ -343,10 +343,12 @@ void app_main(void)
     }
 
     /* 5. 创建任务 */
-    xTaskCreatePinnedToCore(uart_to_sock_task, "uart2sock", 4096,
+    xTaskCreatePinnedToCore(uart_rx_task, "uart_rx", 4096,
                             NULL, 12, NULL, tskNO_AFFINITY);
-    xTaskCreatePinnedToCore(tcp_client_task, "tcp_client", 4096,
+    xTaskCreatePinnedToCore(tcp_send_task, "tcp_send", 4096,
                             NULL, 11, NULL, tskNO_AFFINITY);
+    xTaskCreatePinnedToCore(tcp_client_task, "tcp_client", 4096,
+                            NULL, 10, NULL, tskNO_AFFINITY);
     xTaskCreatePinnedToCore(stats_update_task, "stats", 2048,
                             NULL, 5, NULL, tskNO_AFFINITY);
     xTaskCreatePinnedToCore(led_blink_task, "led_blink", 2048,

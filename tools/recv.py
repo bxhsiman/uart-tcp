@@ -44,7 +44,7 @@ def run_server():
         s.bind((HOST, PORT))
         s.listen(1)
         print(f"[*] TCP server listening on {HOST}:{PORT}")
-
+        last_num = 0
         while True:
             conn, addr = s.accept()
             print(f"[+] Connection from {addr}")
@@ -102,8 +102,13 @@ def run_server():
                             
                             # print(f"标志位: {signature_info}")
                             # uint32_value 转为hex打印
-                            print(f"{hex(uint32_value) , uint32_value}")
+                            print(f"{uint32_value}")
                             
+                            if last_num != uint32_value - 1:
+                            #     # print(f"{uint32_value, last_num}")
+                                print(f"发生不连 {uint32_value , last_num}")
+
+                            last_num = uint32_value
                             # print(f"Payload (Hex):")
                             # print(hex_output)
                             # print("=" * 50)

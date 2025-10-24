@@ -43,7 +43,7 @@
 #define LIDAR_FRAME_SIZE    (LIDAR_PACKET_SIZE * LIDAR_FRAME_PACKETS)  // 352 bytes
 #define LIDAR_HEADER_0      0x0A
 #define LIDAR_HEADER_1      0x00
-#define FRAME_BUFFER_COUNT  25   // 缓冲多少帧再发送
+#define FRAME_BUFFER_COUNT  20   // 缓冲多少帧再发送
 
 
 /* LED状态控制 */
@@ -53,7 +53,7 @@
 /* 日志控制宏 */
 #define ENABLE_DEBUG_LOG    0   // 1=开启详细调试日志, 0=关闭
 #define ENABLE_INFO_LOG     0   // 1=开启信息日志, 0=关闭  
-#define ENABLE_WARN_LOG     0   // 1=开启警告日志, 0=关闭
+#define ENABLE_WARN_LOG     1   // 1=开启警告日志, 0=关闭
 #define ENABLE_ERROR_LOG    1   // 1=开启错误日志, 0=关闭
 
 /* 可控日志宏定义 */

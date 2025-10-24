@@ -1,6 +1,6 @@
 #pragma once
 
-#define CLEAN_NVS
+// #define CLEAN_NVS
 
 /* Wi‑Fi STA 信息 */
 #define WIFI_SSID           "miwifi"

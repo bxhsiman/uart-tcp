@@ -20,6 +20,12 @@ static const char *TAG = "DATAPROC";
 QueueHandle_t g_frame_queue;
 QueueHandle_t g_uart_event_queue;
 
+/* 统计信息 */
+static uint32_t total_frames_sent = 0;
+static uint32_t valid_frames = 0;
+static uint32_t invalid_frames = 0;
+
+
 bool validate_lidar_packet(const uint8_t* data, int len) {
     if (len != LIDAR_PACKET_SIZE) return false;
     if (data[0] != LIDAR_HEADER_0 || data[1] != LIDAR_HEADER_1) return false;
@@ -108,6 +114,9 @@ bool send_frame(const lidar_frame_t* frame) {
     }
 
     free(json_str);
+    if (success) {
+        total_frames_sent++;
+    }
     return success;
 }
 
@@ -175,7 +184,10 @@ void uart_event_task(void *arg)
                                                     current_frame.timestamp = xTaskGetTickCount();
 
                                                     if (current_frame.valid) {
+                                                        valid_frames++;
                                                         xQueueSend(g_frame_queue, &current_frame, 0);
+                                                    } else {
+                                                        invalid_frames++;
                                                     }
 
                                                     frame_started = false;
@@ -212,16 +224,17 @@ void uart_event_task(void *arg)
                     break;
 
                 case UART_BUFFER_FULL:
+                    LOG_E(TAG, "UART buffer full ");
                     // 驱动缓冲区满，清空
-                    LOG_E(TAG, "UART buffer full");
                     uart_flush_input(UART_PORT_NUM);
                     xQueueReset(g_uart_event_queue);
                     break;
 
                 case UART_BREAK:
+                    break;
                 case UART_PARITY_ERR:
+                    break;
                 case UART_FRAME_ERR:
-                    // 错误事件，清空缓冲区
                     LOG_E(TAG, "UART frame error");
                     uart_flush_input(UART_PORT_NUM);
                     break;
@@ -250,17 +263,17 @@ void tcp_send_task(void *arg)
     }
 }
 
-/* 统计信息获取函数（保留接口，返回0） */
+/* 统计信息获取函数 */
 uint32_t get_total_frames_sent(void) {
-    return 0;
+    return total_frames_sent;
 }
 
 uint32_t get_valid_frames(void) {
-    return 0;
+    return valid_frames;
 }
 
 uint32_t get_invalid_frames(void) {
-    return 0;
+    return invalid_frames;
 }
 
 uint32_t get_total_bytes_sent(void) {
